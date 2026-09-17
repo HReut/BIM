@@ -1,0 +1,149 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://claude-tuliks/schema/health-report.schema.json",
+  "title": "Project Health Report",
+  "description": "Output format produced by extraction scripts (e.g. extraction/pyrevit/qa_extract.py, one per model) and consumed by the Health Board dashboard. One file per project; each discipline holds one or more models, each model holds its own chronological run history. Also carries the project's role/permission definitions and the per-project config that BEP-compliance checks (naming, worksets, links) are evaluated against — this is designed to become platform-level config in a future multi-tenant SaaS, not just dashboard decoration.",
+  "type": "object",
+  "required": ["schemaVersion", "project", "roles", "checkDefinitions", "disciplines"],
+  "properties": {
+    "schemaVersion": { "type": "string", "const": "3.0" },
+    "project": {
+      "type": "object",
+      "required": ["name", "config"],
+      "properties": {
+        "name": { "type": "string" },
+        "code": { "type": "string" },
+        "config": {
+          "type": "object",
+          "description": "BEP-derived rules that config-driven checks are evaluated against. In the SaaS platform this becomes per-project settings a BIM Manager edits; today it's authored by hand alongside the sample data.",
+          "required": ["referenceDiscipline"],
+          "properties": {
+            "referenceDiscipline": {
+              "type": "string",
+              "description": "id of the discipline that owns levels/grids/coordinates (usually architecture, sometimes a dedicated survey/URS discipline). Checks that only make sense for non-reference disciplines (coordinates_acquired, copy_monitor_levels, levels_match, copy_monitor_grids, grids_match) are skipped for this discipline's own models."
+            },
+            "namingPatterns": {
+              "type": "object",
+              "properties": {
+                "model": { "type": "string", "description": "Human-readable description of the model file naming convention (regex lives in the extraction script's config, not duplicated here)." },
+                "sheet": { "type": "string" }
+              }
+            },
+            "expectedWorksets": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Workset name patterns every model should have per the BEP."
+            },
+            "expectedLinksByDiscipline": {
+              "type": "object",
+              "description": "Map of discipline id -> array of discipline ids that discipline's models are expected to link in.",
+              "additionalProperties": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        }
+      }
+    },
+    "roles": {
+      "type": "array",
+      "description": "Permission roles for the (future) multi-user SaaS platform. The current dashboard simulates these client-side with a role switcher — there is no real authentication yet.",
+      "items": {
+        "type": "object",
+        "required": ["id", "label", "scope", "detail"],
+        "properties": {
+          "id": { "type": "string", "enum": ["bim_manager", "systems_coordinator", "project_manager", "designer"] },
+          "label": { "type": "string" },
+          "description": { "type": "string" },
+          "scope": {
+            "type": "string",
+            "enum": ["project", "own_discipline"],
+            "description": "\"project\": sees every discipline. \"own_discipline\": sees only the discipline(s) they're assigned to."
+          },
+          "detail": {
+            "type": "string",
+            "enum": ["full", "coordination", "summary"],
+            "description": "\"full\": every check category. \"coordination\": only categoryGroup=coordination checks. \"summary\": scores only, no per-check drill-down."
+          }
+        }
+      }
+    },
+    "checkDefinitions": {
+      "type": "array",
+      "description": "Static metadata describing each QA check, shared by every model. Values live only in a run's checks map.",
+      "items": {
+        "type": "object",
+        "required": ["id", "label", "category", "categoryGroup", "unit", "higherIsBetter", "status"],
+        "properties": {
+          "id": { "type": "string", "description": "Stable key, matches a key in a run's checks map" },
+          "label": { "type": "string" },
+          "category": { "type": "string", "description": "Display grouping shown as a section heading in the check grid." },
+          "categoryGroup": {
+            "type": "string",
+            "enum": ["coordination", "modeling", "documentation", "performance"],
+            "description": "Coarser grouping used to filter checks by role (e.g. systems_coordinator sees only \"coordination\")."
+          },
+          "unit": { "type": "string", "enum": ["count", "%", "MB", "bool", "days"] },
+          "higherIsBetter": { "type": "boolean" },
+          "status": {
+            "type": "string",
+            "enum": ["available", "coming_soon"],
+            "description": "\"coming_soon\" checks (ACC/Forma-dependent, no license yet) are never scored and render as a muted placeholder instead of a card."
+          },
+          "excludeReference": {
+            "type": "boolean",
+            "description": "True for checks that don't apply to the project's referenceDiscipline (e.g. architecture doesn't check coordinates against itself)."
+          },
+          "goodMax": { "type": "number", "description": "Required when higherIsBetter is false and status is available" },
+          "warnMax": { "type": "number" },
+          "critMax": { "type": "number" },
+          "goodMin": { "type": "number", "description": "Required when higherIsBetter is true and status is available. Boolean checks use goodMin=warnMin=critMin=1 (pass=100/good, fail=10/critical)." },
+          "warnMin": { "type": "number" },
+          "critMin": { "type": "number" }
+        }
+      }
+    },
+    "disciplines": {
+      "type": "array",
+      "description": "One entry per discipline (architecture, structure, HVAC, electrical, plumbing, landscape, ...).",
+      "items": {
+        "type": "object",
+        "required": ["id", "label", "models"],
+        "properties": {
+          "id": { "type": "string", "description": "Stable short code, e.g. \"arc\", \"str\", \"hvac\"" },
+          "label": { "type": "string" },
+          "models": {
+            "type": "array",
+            "description": "One or more Revit models that belong to this discipline.",
+            "items": {
+              "type": "object",
+              "required": ["id", "label", "modelFile", "revitVersion", "history"],
+              "properties": {
+                "id": { "type": "string", "description": "Stable key, unique within the project" },
+                "label": { "type": "string" },
+                "modelFile": { "type": "string" },
+                "revitVersion": { "type": "string" },
+                "history": {
+                  "type": "array",
+                  "description": "One entry per extraction run against this model, chronological.",
+                  "items": {
+                    "type": "object",
+                    "required": ["runId", "timestamp", "healthScore", "checks"],
+                    "properties": {
+                      "runId": { "type": "string", "format": "date-time" },
+                      "timestamp": { "type": "string", "format": "date-time" },
+                      "healthScore": { "type": "integer", "minimum": 0, "maximum": 100 },
+                      "checks": {
+                        "type": "object",
+                        "description": "Map of checkDefinitions[].id -> raw value for this run. Boolean checks store 1 (pass) or 0 (fail). Checks with status=coming_soon or excludeReference (on the reference discipline) are simply absent from this map.",
+                        "additionalProperties": { "type": "number" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

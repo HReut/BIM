@@ -1,0 +1,928 @@
+<title>Model Health Board</title>
+<style>
+  :root {
+    --surface: #fcfcfb;
+    --page: #f9f9f7;
+    --ink: #0b0b0b;
+    --ink-2: #52514e;
+    --ink-muted: #898781;
+    --line: #e1e0d9;
+    --line-strong: #c3c2b7;
+    --accent: #2a78d6;
+    --accent-wash: rgba(42, 120, 214, 0.10);
+    --good: #0ca30c;
+    --warning: #fab219;
+    --serious: #ec835a;
+    --critical: #d03b3b;
+    --card-radius: 10px;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --surface: #1a1a19;
+      --page: #0d0d0d;
+      --ink: #ffffff;
+      --ink-2: #c3c2b7;
+      --ink-muted: #898781;
+      --line: #2c2c2a;
+      --line-strong: #383835;
+      --accent: #3987e5;
+      --accent-wash: rgba(57, 135, 229, 0.14);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --surface: #1a1a19;
+    --page: #0d0d0d;
+    --ink: #ffffff;
+    --ink-2: #c3c2b7;
+    --ink-muted: #898781;
+    --line: #2c2c2a;
+    --line-strong: #383835;
+    --accent: #3987e5;
+    --accent-wash: rgba(57, 135, 229, 0.14);
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--page);
+    color: var(--ink);
+    font-family: "IBM Plex Sans Hebrew", "Segoe UI", Arial, sans-serif;
+    margin: 0;
+    padding-inline: 20px;
+    padding-block: 28px 60px;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; direction: rtl; }
+  .mono { font-family: "IBM Plex Mono", Consolas, monospace; font-variant-numeric: tabular-nums; }
+
+  header.top {
+    display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between;
+    gap: 10px 24px; padding-bottom: 18px; border-bottom: 1px solid var(--line);
+    margin-bottom: 24px;
+  }
+  header.top h1 { font-size: 20px; font-weight: 600; margin: 0; letter-spacing: -0.01em; }
+  header.top .meta { color: var(--ink-2); font-size: 13px; display: flex; gap: 14px; flex-wrap: wrap; }
+  header.top .meta b { color: var(--ink); font-weight: 500; unicode-bidi: isolate; direction: ltr; }
+  .demo-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.02em;
+    color: var(--accent); border: 1px solid var(--accent); border-radius: 999px;
+    padding: 3px 10px; white-space: nowrap;
+  }
+
+  .header-controls { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+  .role-switcher { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-2); }
+  .role-switcher select {
+    font: inherit; font-size: 12px; color: var(--ink); background: var(--surface);
+    border: 1px solid var(--line-strong); border-radius: 6px; padding: 4px 8px; cursor: pointer;
+  }
+  .permission-note {
+    font-size: 12.5px; color: var(--accent); background: var(--accent-wash);
+    border: 1px solid var(--accent); border-radius: 8px; padding: 8px 12px; margin: 0 0 18px;
+  }
+
+  .cat-section { margin-bottom: 22px; }
+  .cat-section:last-child { margin-bottom: 0; }
+  .cat-section h3 {
+    font-size: 12px; font-weight: 600; color: var(--ink-2); margin: 0 0 10px;
+    padding-bottom: 6px; border-bottom: 1px solid var(--line);
+  }
+  .card.coming-soon { opacity: 0.6; }
+  .card.coming-soon .lbl { color: var(--ink-2); }
+  .coming-soon-badge {
+    display: inline-flex; align-items: center; font-size: 11px; font-weight: 600;
+    color: var(--ink-muted); background: var(--page); border: 1px dashed var(--line-strong);
+    border-radius: 999px; padding: 3px 10px; margin-top: 8px;
+  }
+
+  .breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-muted); margin-bottom: 10px; flex-wrap: wrap; }
+  .breadcrumb button {
+    font: inherit; color: var(--ink-2); background: none; border: none; padding: 0; cursor: pointer;
+  }
+  .breadcrumb button:hover { color: var(--accent); text-decoration: underline; }
+  .breadcrumb .current { color: var(--ink); font-weight: 500; }
+  .breadcrumb .sep { color: var(--line-strong); }
+
+  section { margin-bottom: 34px; }
+  .eyebrow {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.06em; color: var(--ink-muted);
+    text-transform: uppercase; margin: 0 0 10px;
+  }
+
+  .hero {
+    display: grid; grid-template-columns: 260px 1fr; gap: 28px;
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--card-radius);
+    padding: 22px 24px;
+  }
+  @media (max-width: 620px) { .hero { grid-template-columns: 1fr; } }
+  .score-figure { font-size: 56px; font-weight: 600; line-height: 1; }
+  .score-figure sub { font-size: 18px; font-weight: 500; color: var(--ink-muted); bottom: 0; }
+  .score-status { font-size: 13px; font-weight: 600; margin-top: 6px; display: flex; align-items: center; gap: 6px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex: none; }
+  .meter-track { height: 8px; border-radius: 999px; margin-top: 14px; overflow: hidden; }
+  .meter-fill { height: 100%; border-radius: 999px; }
+  .hero-right { display: flex; flex-direction: column; justify-content: center; gap: 8px; }
+  .hero-delta { font-size: 14px; color: var(--ink-2); }
+  .hero-delta b { color: var(--good); font-weight: 600; }
+  .hero-spark { width: 100%; height: 72px; }
+
+  .strip { display: flex; gap: 10px; flex-wrap: wrap; }
+  .chip {
+    flex: 1 1 140px; background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--card-radius); padding: 12px 14px; display: flex; align-items: center; gap: 10px;
+  }
+  .chip .n { font-size: 22px; font-weight: 600; font-family: "IBM Plex Mono", monospace; }
+  .chip .lbl { font-size: 12px; color: var(--ink-2); }
+
+  .grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px;
+  }
+  .card {
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--card-radius);
+    padding: 14px 16px;
+  }
+  .card.clickable { cursor: pointer; transition: border-color 0.12s, transform 0.12s; }
+  .card.clickable:hover { border-color: var(--accent); }
+  .card.clickable:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .card .cat { font-size: 10.5px; color: var(--ink-muted); letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 4px; }
+  .card .lbl { font-size: 13.5px; color: var(--ink); margin-bottom: 4px; min-height: 34px; }
+  .card .cardmeta { font-size: 11px; color: var(--ink-muted); margin-bottom: 10px; }
+  .card .row { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; }
+  .card .val { font-size: 26px; font-weight: 600; }
+  .card .val .unit { font-size: 12px; font-weight: 500; color: var(--ink-muted); margin-inline-start: 3px; }
+  .card svg.spark { flex: none; }
+  .status-tag { font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; gap: 5px; margin-top: 8px; }
+
+  .chart-card {
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--card-radius);
+    padding: 18px 20px 12px;
+  }
+  .chart-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; flex-wrap: wrap; gap: 8px; }
+  .chart-head h2 { font-size: 14px; font-weight: 600; margin: 0; }
+  .chart-toggle {
+    font-size: 12px; color: var(--accent); background: none; border: 1px solid var(--line-strong);
+    border-radius: 6px; padding: 4px 10px; cursor: pointer; font-family: inherit;
+  }
+  .chart-toggle:hover { background: var(--accent-wash); }
+  .chart-area { position: relative; direction: ltr; }
+  .chart-tip {
+    position: absolute; pointer-events: none; background: var(--ink); color: var(--surface);
+    font-size: 12px; padding: 6px 9px; border-radius: 6px; transform: translate(-50%, -110%);
+    white-space: nowrap; opacity: 0; transition: opacity 0.1s; direction: ltr; text-align: center;
+  }
+  .chart-tip .v { font-weight: 700; font-family: "IBM Plex Mono", monospace; }
+  .chart-tip .d { color: var(--line); font-size: 11px; }
+  table.data-table {
+    width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 10px; direction: rtl;
+  }
+  table.data-table th, table.data-table td {
+    text-align: right; padding: 6px 8px; border-bottom: 1px solid var(--line);
+    font-family: "IBM Plex Mono", monospace; font-variant-numeric: tabular-nums;
+  }
+  table.data-table td { direction: ltr; }
+  table.data-table th { color: var(--ink-muted); font-weight: 500; font-family: inherit; text-align: right; }
+  table.data-table td:first-child, table.data-table th:first-child { text-align: right; }
+  .table-wrap { overflow-x: auto; }
+
+  footer {
+    color: var(--ink-muted); font-size: 12px; border-top: 1px solid var(--line);
+    padding-top: 16px; line-height: 1.7;
+  }
+  footer code { font-family: "IBM Plex Mono", monospace; background: var(--page); padding: 1px 5px; border-radius: 4px; }
+  a { color: var(--accent); }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Hebrew:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1 id="pageTitle">Model Health Board</h1>
+      <div class="meta" id="pageMeta"></div>
+    </div>
+    <div class="header-controls">
+      <span class="demo-badge">● נתוני הדגמה — טרם חובר לריצת pyRevit חיה</span>
+      <div class="role-switcher">
+        <label for="roleSelect">מציג כ</label>
+        <select id="roleSelect"></select>
+        <select id="disciplineAssignSelect" hidden></select>
+      </div>
+    </div>
+  </header>
+
+  <nav class="breadcrumb" id="breadcrumb" aria-label="ניווט"></nav>
+  <p class="permission-note" id="permissionNote" hidden></p>
+
+  <section class="hero" id="heroSection" aria-label="ציון בריאות"></section>
+
+  <section>
+    <p class="eyebrow" id="stripLabel"></p>
+    <div class="strip" id="statusStrip"></div>
+  </section>
+
+  <section>
+    <p class="eyebrow" id="gridLabel"></p>
+    <div id="cardGridWrap"></div>
+  </section>
+
+  <section>
+    <div class="chart-card">
+      <div class="chart-head">
+        <h2 id="chartTitle">מגמת ציון בריאות לאורך זמן</h2>
+        <button class="chart-toggle" id="tableToggle" type="button">הצג כטבלה</button>
+      </div>
+      <div class="chart-area" id="chartArea"></div>
+      <div class="table-wrap" id="tableWrap" hidden></div>
+    </div>
+  </section>
+
+  <footer>
+    מקור נתונים: <code>data/health-history.json</code> (סכימה: <code>schema/health-report.schema.json</code>).
+    בייצור, כל מודל מתעדכן על-ידי <code>extraction/pyrevit/qa_extract.py</code> שרץ בתוך Revit ודוחף ריצה חדשה בכל הרצה.
+    נבנה עם Claude Code.
+  </footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var STATUS_COLOR = { good: "var(--good)", warning: "var(--warning)", serious: "var(--serious)", critical: "var(--critical)" };
+  var STATUS_LABEL = { good: "תקין", warning: "אזהרה", serious: "חריגה", critical: "קריטי" };
+
+  function scoreFor(def, value) {
+    if (def.higherIsBetter) {
+      if (value >= def.goodMin) return 100;
+      if (value <= def.critMin) return 10;
+      if (value >= def.warnMin) return 60 + 40 * (value - def.warnMin) / (def.goodMin - def.warnMin);
+      return 10 + 50 * (value - def.critMin) / (def.warnMin - def.critMin);
+    }
+    if (value <= def.goodMax) return 100;
+    if (value >= def.critMax) return 10;
+    if (value <= def.warnMax) return 60 + 40 * (def.warnMax - value) / Math.max(1, def.warnMax - def.goodMax);
+    return 10 + 50 * (def.critMax - value) / Math.max(1, def.critMax - def.warnMax);
+  }
+
+  function statusFor(def, value) {
+    if (def.higherIsBetter) {
+      if (value >= def.goodMin) return "good";
+      if (value >= def.warnMin) return "warning";
+      if (value >= def.critMin) return "serious";
+      return "critical";
+    }
+    if (value <= def.goodMax) return "good";
+    if (value <= def.warnMax) return "warning";
+    if (value <= def.critMax) return "serious";
+    return "critical";
+  }
+
+  function overallStatus(score) {
+    if (score >= 85) return "good";
+    if (score >= 60) return "warning";
+    if (score >= 35) return "serious";
+    return "critical";
+  }
+
+  function fmtDate(iso) {
+    var d = new Date(iso);
+    return String(d.getDate()).padStart(2, "0") + "/" + String(d.getMonth() + 1).padStart(2, "0");
+  }
+  function fmtDateFull(iso) {
+    var d = new Date(iso);
+    return fmtDate(iso) + " " + String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+  }
+  function fmtVal(v, unit) {
+    if (v === null || v === undefined) return "—";
+    if (unit === "bool") return v ? "כן" : "לא";
+    if (unit === "%") return v.toFixed(1);
+    return String(v);
+  }
+  function unitSuffix(unit) {
+    if (unit === "count" || unit === "bool") return "";
+    if (unit === "days") return " ימים";
+    return unit;
+  }
+
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+
+  function sparklinePath(values, w, h, pad) {
+    var min = Math.min.apply(null, values), max = Math.max.apply(null, values);
+    if (min === max) { min -= 1; max += 1; }
+    var n = values.length;
+    var pts = values.map(function (v, i) {
+      var x = pad + (i / (n - 1)) * (w - pad * 2);
+      var y = h - pad - ((v - min) / (max - min)) * (h - pad * 2);
+      return [x, y];
+    });
+    var d = pts.map(function (p, i) { return (i === 0 ? "M" : "L") + p[0].toFixed(1) + "," + p[1].toFixed(1); }).join(" ");
+    return { d: d, last: pts[pts.length - 1] };
+  }
+
+  function renderSpark(values, statusColor) {
+    var w = 84, h = 30, pad = 3;
+    var line = sparklinePath(values, w, h, pad);
+    var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("class", "spark");
+    svg.setAttribute("width", w); svg.setAttribute("height", h);
+    svg.setAttribute("viewBox", "0 0 " + w + " " + h);
+    var path = document.createElementNS(svg.namespaceURI, "path");
+    path.setAttribute("d", line.d);
+    path.setAttribute("fill", "none");
+    path.setAttribute("stroke", "var(--line-strong)");
+    path.setAttribute("stroke-width", "1.6");
+    path.setAttribute("stroke-linecap", "round");
+    path.setAttribute("stroke-linejoin", "round");
+    svg.appendChild(path);
+    var dot = document.createElementNS(svg.namespaceURI, "circle");
+    dot.setAttribute("cx", line.last[0]); dot.setAttribute("cy", line.last[1]); dot.setAttribute("r", "3");
+    dot.setAttribute("fill", statusColor);
+    dot.setAttribute("stroke", "var(--surface)"); dot.setAttribute("stroke-width", "1.5");
+    svg.appendChild(dot);
+    return svg;
+  }
+
+  var CATEGORY_ORDER = ["קואורדינציה והקמה", "התקדמות מידול", "Model Cleanliness", "Worksharing", "Rooms & Spaces", "Families", "Views & Sheets", "תיעוד", "Performance"];
+
+  // ---- Aggregation: a model has real history; a discipline/project score is
+  // the average of its children's *latest* score. For the trend line we also
+  // need a time series at each level, built by averaging children run-by-run
+  // (index-aligned — assumes children are checked on roughly the same
+  // cadence, true for this sample data; a real multi-cadence deployment
+  // would need date-bucketed aggregation instead). ----
+  function disciplineSeries(disc) {
+    var len = Math.min.apply(null, disc.models.map(function (m) { return m.history.length; }));
+    var out = [];
+    for (var i = 0; i < len; i++) {
+      var sum = 0;
+      disc.models.forEach(function (m) { sum += m.history[i].healthScore; });
+      out.push({ timestamp: disc.models[0].history[i].timestamp, healthScore: Math.round(sum / disc.models.length) });
+    }
+    return out;
+  }
+  function projectSeries(data, disciplines) {
+    var perDisc = (disciplines || data.disciplines).map(disciplineSeries);
+    var len = Math.min.apply(null, perDisc.map(function (s) { return s.length; }));
+    var out = [];
+    for (var i = 0; i < len; i++) {
+      var sum = 0;
+      perDisc.forEach(function (s) { sum += s[i].healthScore; });
+      out.push({ timestamp: perDisc[0][i].timestamp, healthScore: Math.round(sum / perDisc.length) });
+    }
+    return out;
+  }
+  function latestScore(series) { return series[series.length - 1].healthScore; }
+
+  var DATA = null;
+  var STATE = { level: "project", roleId: "bim_manager", designerDiscId: null };
+
+  function setState(next) {
+    STATE = Object.assign({}, STATE, next);
+    render();
+    window.scrollTo(0, 0);
+  }
+
+  function currentRole() {
+    return DATA.roles.filter(function (r) { return r.id === STATE.roleId; })[0] || DATA.roles[0];
+  }
+
+  // A "designer" only ever sees the one discipline they're assigned to (picked
+  // via the role switcher's second dropdown, standing in for real per-user
+  // assignment once there's an actual login).
+  function visibleDisciplines() {
+    var role = currentRole();
+    if (role.scope === "project") return DATA.disciplines;
+    var assigned = STATE.designerDiscId || DATA.disciplines[0].id;
+    return DATA.disciplines.filter(function (d) { return d.id === assigned; });
+  }
+
+  function setupRoleSwitcher() {
+    var roleSelect = document.getElementById("roleSelect");
+    var discSelect = document.getElementById("disciplineAssignSelect");
+    roleSelect.innerHTML = "";
+    DATA.roles.forEach(function (r) {
+      var opt = document.createElement("option");
+      opt.value = r.id; opt.textContent = r.label;
+      roleSelect.appendChild(opt);
+    });
+    discSelect.innerHTML = "";
+    DATA.disciplines.forEach(function (d) {
+      var opt = document.createElement("option");
+      opt.value = d.id; opt.textContent = d.label;
+      discSelect.appendChild(opt);
+    });
+    roleSelect.value = STATE.roleId;
+    discSelect.value = STATE.designerDiscId || DATA.disciplines[0].id;
+    discSelect.hidden = currentRole().scope !== "own_discipline";
+
+    roleSelect.onchange = function () {
+      var role = DATA.roles.filter(function (r) { return r.id === roleSelect.value; })[0];
+      discSelect.hidden = role.scope !== "own_discipline";
+      setState({ roleId: role.id, level: "project" });
+    };
+    discSelect.onchange = function () {
+      setState({ designerDiscId: discSelect.value, level: "discipline", discId: discSelect.value });
+    };
+  }
+
+  function renderPermissionNote(text) {
+    var note = document.getElementById("permissionNote");
+    if (!text) { note.hidden = true; return; }
+    note.hidden = false;
+    note.textContent = text;
+  }
+
+  function render() {
+    document.getElementById("disciplineAssignSelect").hidden = currentRole().scope !== "own_discipline";
+    if (STATE.level === "project" && currentRole().scope !== "project") {
+      // This role has no project-wide view — land on their own discipline instead.
+      STATE.level = "discipline";
+      STATE.discId = STATE.designerDiscId || DATA.disciplines[0].id;
+    }
+    if (STATE.level === "project") renderProject();
+    else if (STATE.level === "discipline") renderDiscipline(STATE.discId);
+    else renderModel(STATE.discId, STATE.modelId);
+  }
+
+  function renderBreadcrumb(trail) {
+    var nav = document.getElementById("breadcrumb");
+    nav.innerHTML = "";
+    trail.forEach(function (step, i) {
+      if (i > 0) nav.appendChild(el("span", "sep", "/"));
+      if (step.onClick) {
+        var btn = document.createElement("button");
+        btn.type = "button"; btn.textContent = step.label;
+        btn.onclick = step.onClick;
+        nav.appendChild(btn);
+      } else {
+        nav.appendChild(el("span", "current", step.label));
+      }
+    });
+  }
+
+  function renderHeader(title, metaPairs) {
+    document.getElementById("pageTitle").textContent = title;
+    var meta = document.getElementById("pageMeta");
+    meta.innerHTML = "";
+    metaPairs.forEach(function (pair) {
+      var span = el("span", null);
+      span.appendChild(document.createTextNode(pair[0] + ": "));
+      var b = el("b", null); b.textContent = pair[1]; span.appendChild(b);
+      meta.appendChild(span);
+    });
+  }
+
+  function renderHero(seriesScores, subtitleLabel) {
+    var hero = document.getElementById("heroSection");
+    hero.innerHTML = "";
+    var score = seriesScores[seriesScores.length - 1];
+    var first = seriesScores[0];
+    var status = overallStatus(score);
+    var color = STATUS_COLOR[status];
+
+    var left = el("div");
+    var fig = el("div", "score-figure mono");
+    fig.appendChild(document.createTextNode(String(score)));
+    var sub = el("sub"); sub.textContent = "/100"; fig.appendChild(sub);
+    left.appendChild(fig);
+    var st = el("div", "score-status");
+    st.style.color = color;
+    var dot = el("span", "dot"); dot.style.background = color; st.appendChild(dot);
+    st.appendChild(document.createTextNode(STATUS_LABEL[status] + " — " + subtitleLabel));
+    left.appendChild(st);
+    var track = el("div", "meter-track");
+    track.style.background = "color-mix(in srgb, " + color + " 18%, var(--page))";
+    var fill = el("div", "meter-fill"); fill.style.width = score + "%"; fill.style.background = color;
+    track.appendChild(fill);
+    left.appendChild(track);
+    hero.appendChild(left);
+
+    var right = el("div", "hero-right");
+    var delta = score - first;
+    var deltaLine = el("div", "hero-delta");
+    deltaLine.appendChild(document.createTextNode("שינוי בתקופה: "));
+    var b = el("b"); b.textContent = first + " ← " + score; deltaLine.appendChild(b);
+    deltaLine.appendChild(document.createTextNode(" (" + (delta >= 0 ? "+" : "") + delta + " נק') על פני " + seriesScores.length + " ריצות"));
+    right.appendChild(deltaLine);
+    var sparkWrap = el("div", "hero-spark");
+    var bigSpark = renderSpark(seriesScores, color);
+    bigSpark.style.width = "100%"; bigSpark.style.height = "100%";
+    bigSpark.setAttribute("preserveAspectRatio", "none");
+    sparkWrap.appendChild(bigSpark);
+    right.appendChild(sparkWrap);
+    hero.appendChild(right);
+  }
+
+  function renderStatusStrip(stripLabelText, statuses) {
+    document.getElementById("stripLabel").textContent = stripLabelText;
+    var counts = { good: 0, warning: 0, serious: 0, critical: 0 };
+    statuses.forEach(function (s) { counts[s]++; });
+    var strip = document.getElementById("statusStrip");
+    strip.innerHTML = "";
+    ["good", "warning", "serious", "critical"].forEach(function (s) {
+      var chip = el("div", "chip");
+      var dotEl = el("span", "dot"); dotEl.style.background = STATUS_COLOR[s];
+      var textWrap = el("div");
+      var n = el("div", "n"); n.textContent = counts[s];
+      var lbl = el("div", "lbl"); lbl.textContent = STATUS_LABEL[s];
+      textWrap.appendChild(n); textWrap.appendChild(lbl);
+      chip.appendChild(dotEl); chip.appendChild(textWrap);
+      strip.appendChild(chip);
+    });
+  }
+
+  function buildCard(c) {
+    if (c.comingSoon) {
+      var csCard = el("div", "card coming-soon");
+      if (c.eyebrow) csCard.appendChild(el("div", "cat", c.eyebrow));
+      csCard.appendChild(el("div", "lbl", c.label));
+      csCard.appendChild(el("span", "coming-soon-badge", "בקרוב"));
+      return csCard;
+    }
+    var color = STATUS_COLOR[c.status];
+    var card = el("div", "card" + (c.onClick ? " clickable" : ""));
+    if (c.onClick) { card.tabIndex = 0; card.onclick = c.onClick; card.onkeydown = function (e) { if (e.key === "Enter" || e.key === " ") c.onClick(); }; }
+    if (c.eyebrow) card.appendChild(el("div", "cat", c.eyebrow));
+    card.appendChild(el("div", "lbl", c.label));
+    if (c.metaText) card.appendChild(el("div", "cardmeta", c.metaText));
+    var row = el("div", "row");
+    var valWrap = el("div", "val mono");
+    valWrap.appendChild(document.createTextNode(c.valueText));
+    if (c.unitText) { var unit = el("span", "unit"); unit.textContent = c.unitText; valWrap.appendChild(unit); }
+    row.appendChild(valWrap);
+    row.appendChild(renderSpark(c.sparkValues, color));
+    card.appendChild(row);
+    var tag = el("div", "status-tag"); tag.style.color = color;
+    var tdot = el("span", "dot"); tdot.style.background = color;
+    tag.appendChild(tdot);
+    tag.appendChild(document.createTextNode(STATUS_LABEL[c.status]));
+    card.appendChild(tag);
+    return card;
+  }
+
+  function renderCardGrid(gridLabelText, cards) {
+    document.getElementById("gridLabel").textContent = gridLabelText;
+    var wrap = document.getElementById("cardGridWrap");
+    wrap.innerHTML = "";
+    var grid = el("div", "grid");
+    cards.forEach(function (c) { grid.appendChild(buildCard(c)); });
+    wrap.appendChild(grid);
+  }
+
+  // Model-level checks are grouped into one .grid per category, each under
+  // its own heading — flat grids stay readable at ~8 cards, but this catalog
+  // runs to ~28 across very different kinds of checks.
+  function renderGroupedChecks(gridLabelText, groups) {
+    document.getElementById("gridLabel").textContent = gridLabelText;
+    var wrap = document.getElementById("cardGridWrap");
+    wrap.innerHTML = "";
+    groups.forEach(function (g) {
+      if (!g.cards.length) return;
+      var section = el("div", "cat-section");
+      section.appendChild(el("h3", null, g.category));
+      var grid = el("div", "grid");
+      g.cards.forEach(function (c) { grid.appendChild(buildCard(c)); });
+      section.appendChild(grid);
+      wrap.appendChild(section);
+    });
+  }
+
+  // ---- Level renderers ----
+
+  function renderProject() {
+    var data = DATA;
+    var disciplines = visibleDisciplines();
+    var pSeries = projectSeries(data, disciplines);
+    var totalModels = disciplines.reduce(function (n, d) { return n + d.models.length; }, 0);
+    var lastRun = disciplines.reduce(function (max, d) {
+      return d.models.reduce(function (m2, mo) {
+        var t = mo.history[mo.history.length - 1].timestamp;
+        return t > m2 ? t : m2;
+      }, max);
+    }, "");
+
+    renderBreadcrumb([{ label: data.project.name }]);
+    renderPermissionNote(null);
+    renderHeader(data.project.name, [
+      ["קוד פרויקט", data.project.code || "—"],
+      ["דיסציפלינות", String(disciplines.length)],
+      ["מודלים", String(totalModels)],
+      ["בדיקה אחרונה", fmtDateFull(lastRun)]
+    ]);
+    renderHero(pSeries.map(function (h) { return h.healthScore; }), "ציון בריאות כולל של הפרויקט");
+    renderStatusStrip("פילוח דיסציפלינות לפי סטטוס (" + disciplines.length + ")",
+      disciplines.map(function (d) { return overallStatus(latestScore(disciplineSeries(d))); }));
+    renderCardGrid("דיסציפלינות", disciplines.map(function (d) {
+      var series = disciplineSeries(d);
+      var score = latestScore(series);
+      return {
+        eyebrow: d.id.toUpperCase(),
+        label: d.label,
+        metaText: d.models.length + (d.models.length === 1 ? " מודל" : " מודלים"),
+        valueText: String(score), unitText: "/100",
+        sparkValues: series.map(function (h) { return h.healthScore; }),
+        status: overallStatus(score),
+        onClick: function () { setState({ level: "discipline", discId: d.id }); }
+      };
+    }));
+    document.getElementById("chartTitle").textContent = "מגמת ציון בריאות — ממוצע כלל הפרויקט";
+    buildTrendChart(pSeries);
+    buildTable(pSeries);
+  }
+
+  function renderDiscipline(discId) {
+    var data = DATA;
+    var role = currentRole();
+    var disc = data.disciplines.filter(function (d) { return d.id === discId; })[0];
+    var series = disciplineSeries(disc);
+
+    var trail = [];
+    if (role.scope === "project") {
+      trail.push({ label: data.project.name, onClick: function () { setState({ level: "project" }); } });
+    } else {
+      trail.push({ label: data.project.name });
+    }
+    trail.push({ label: disc.label });
+    renderBreadcrumb(trail);
+    renderPermissionNote(role.scope === "own_discipline"
+      ? "מוצג לפי הרשאת “" + role.label + "” — גישה לדיספלינה זו בלבד."
+      : null);
+    renderHeader(disc.label, [
+      ["פרויקט", data.project.name],
+      ["מודלים", String(disc.models.length)],
+      ["בדיקה אחרונה", fmtDateFull(series[series.length - 1].timestamp)]
+    ]);
+    renderHero(series.map(function (h) { return h.healthScore; }), "ציון בריאות הדיסציפלינה");
+    renderStatusStrip("פילוח מודלים לפי סטטוס (" + disc.models.length + ")",
+      disc.models.map(function (m) { return overallStatus(m.history[m.history.length - 1].healthScore); }));
+    renderCardGrid("מודלים", disc.models.map(function (m) {
+      var score = m.history[m.history.length - 1].healthScore;
+      return {
+        eyebrow: m.revitVersion ? "Revit " + m.revitVersion : "",
+        label: m.label,
+        metaText: m.modelFile,
+        valueText: String(score), unitText: "/100",
+        sparkValues: m.history.map(function (h) { return h.healthScore; }),
+        status: overallStatus(score),
+        onClick: function () { setState({ level: "model", discId: disc.id, modelId: m.id }); }
+      };
+    }));
+    document.getElementById("chartTitle").textContent = "מגמת ציון בריאות — ממוצע " + disc.label;
+    buildTrendChart(series);
+    buildTable(series);
+  }
+
+  function renderModel(discId, modelId) {
+    var data = DATA;
+    var role = currentRole();
+    var disc = data.disciplines.filter(function (d) { return d.id === discId; })[0];
+    var model = disc.models.filter(function (m) { return m.id === modelId; })[0];
+    var history = model.history;
+    var latest = history[history.length - 1];
+    var isReference = disc.id === data.project.config.referenceDiscipline;
+
+    var trail = [];
+    trail.push(role.scope === "project"
+      ? { label: data.project.name, onClick: function () { setState({ level: "project" }); } }
+      : { label: data.project.name });
+    trail.push({ label: disc.label, onClick: function () { setState({ level: "discipline", discId: disc.id }); } });
+    trail.push({ label: model.label });
+    renderBreadcrumb(trail);
+
+    renderHeader(model.label, [
+      ["קובץ", model.modelFile],
+      ["Revit", model.revitVersion],
+      ["בדיקה אחרונה", fmtDateFull(latest.timestamp)],
+      ["ריצות בהיסטוריה", String(history.length)]
+    ]);
+    renderHero(history.map(function (h) { return h.healthScore; }), "ציון בריאות המודל");
+
+    if (role.detail === "summary") {
+      renderPermissionNote("מוצג לפי הרשאת “" + role.label + "” — ציון וסטטוס בלבד, ללא פירוט בדיקות.");
+      document.getElementById("stripLabel").textContent = "";
+      document.getElementById("statusStrip").innerHTML = "";
+      document.getElementById("gridLabel").textContent = "";
+      document.getElementById("cardGridWrap").innerHTML = "";
+    } else {
+      renderPermissionNote(role.detail === "coordination"
+        ? "מוצג לפי הרשאת “" + role.label + "” — בדיקות קואורדינציה בלבד."
+        : null);
+
+      // Only checks this model actually has values for (available checks skip
+      // themselves on the reference discipline via excludeReference), plus
+      // coming_soon checks shown as a placeholder rather than scored.
+      var visibleDefs = data.checkDefinitions.filter(function (def) {
+        if (role.detail === "coordination" && def.categoryGroup !== "coordination") return false;
+        if (def.status === "coming_soon") return true;
+        return latest.checks[def.id] !== undefined;
+      });
+
+      var scoredDefs = visibleDefs.filter(function (def) { return def.status === "available"; });
+      renderStatusStrip("פילוח לפי סטטוס (" + scoredDefs.length + " בדיקות)",
+        scoredDefs.map(function (def) { return statusFor(def, latest.checks[def.id]); }));
+
+      var byCategory = {};
+      visibleDefs.forEach(function (def) {
+        (byCategory[def.category] = byCategory[def.category] || []).push(def);
+      });
+      var groups = CATEGORY_ORDER.filter(function (cat) { return byCategory[cat]; }).map(function (cat) {
+        return {
+          category: cat,
+          cards: byCategory[cat].map(function (def) {
+            if (def.status === "coming_soon") {
+              return { comingSoon: true, eyebrow: def.category, label: def.label };
+            }
+            var value = latest.checks[def.id];
+            return {
+              eyebrow: def.category,
+              label: def.label,
+              valueText: fmtVal(value, def.unit), unitText: unitSuffix(def.unit),
+              sparkValues: history.map(function (h) { return h.checks[def.id]; }),
+              status: statusFor(def, value),
+              onClick: null
+            };
+          })
+        };
+      });
+      renderGroupedChecks("בדיקות QA — ריצה אחרונה" + (isReference ? " (דיספלינת ייחוס)" : ""), groups);
+    }
+
+    document.getElementById("chartTitle").textContent = "מגמת ציון בריאות לאורך זמן";
+    buildTrendChart(history);
+    buildTable(history);
+  }
+
+  function buildTrendChart(history) {
+    var area = document.getElementById("chartArea");
+    area.innerHTML = "";
+    var w = 1000, h = 260, padL = 34, padR = 12, padT = 16, padB = 28;
+    var n = history.length;
+    var x = function (i) { return padL + (i / (n - 1)) * (w - padL - padR); };
+    var y = function (v) { return padT + (1 - v / 100) * (h - padT - padB); };
+
+    var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", "0 0 " + w + " " + h);
+    svg.setAttribute("width", "100%");
+    svg.style.display = "block";
+    svg.style.overflow = "visible";
+
+    // gridlines + y labels
+    [0, 25, 50, 75, 100].forEach(function (t) {
+      var gy = y(t);
+      var line = document.createElementNS(svg.namespaceURI, "line");
+      line.setAttribute("x1", padL); line.setAttribute("x2", w - padR);
+      line.setAttribute("y1", gy); line.setAttribute("y2", gy);
+      line.setAttribute("stroke", "var(--line)"); line.setAttribute("stroke-width", "1");
+      svg.appendChild(line);
+      var label = document.createElementNS(svg.namespaceURI, "text");
+      label.setAttribute("x", padL - 8); label.setAttribute("y", gy + 3);
+      label.setAttribute("text-anchor", "end"); label.setAttribute("font-size", "10.5");
+      label.setAttribute("fill", "var(--ink-muted)"); label.setAttribute("font-family", "IBM Plex Mono, monospace");
+      label.textContent = t;
+      svg.appendChild(label);
+    });
+
+    var pts = history.map(function (hpt, i) { return [x(i), y(hpt.healthScore)]; });
+    var linePath = pts.map(function (p, i) { return (i === 0 ? "M" : "L") + p[0].toFixed(1) + "," + p[1].toFixed(1); }).join(" ");
+    var areaPath = linePath + " L" + pts[pts.length - 1][0].toFixed(1) + "," + y(0) +
+      " L" + pts[0][0].toFixed(1) + "," + y(0) + " Z";
+
+    var area1 = document.createElementNS(svg.namespaceURI, "path");
+    area1.setAttribute("d", areaPath); area1.setAttribute("fill", "var(--accent-wash)"); area1.setAttribute("stroke", "none");
+    svg.appendChild(area1);
+
+    var line1 = document.createElementNS(svg.namespaceURI, "path");
+    line1.setAttribute("d", linePath); line1.setAttribute("fill", "none");
+    line1.setAttribute("stroke", "var(--accent)"); line1.setAttribute("stroke-width", "2");
+    line1.setAttribute("stroke-linecap", "round"); line1.setAttribute("stroke-linejoin", "round");
+    svg.appendChild(line1);
+
+    // end marker
+    var lastP = pts[pts.length - 1];
+    var endDot = document.createElementNS(svg.namespaceURI, "circle");
+    endDot.setAttribute("cx", lastP[0]); endDot.setAttribute("cy", lastP[1]); endDot.setAttribute("r", "4.5");
+    endDot.setAttribute("fill", "var(--accent)"); endDot.setAttribute("stroke", "var(--surface)"); endDot.setAttribute("stroke-width", "2");
+    svg.appendChild(endDot);
+
+    // x labels (first, mid, last)
+    [0, Math.floor((n - 1) / 2), n - 1].forEach(function (i) {
+      var label = document.createElementNS(svg.namespaceURI, "text");
+      label.setAttribute("x", x(i)); label.setAttribute("y", h - 8);
+      label.setAttribute("text-anchor", i === 0 ? "start" : i === n - 1 ? "end" : "middle");
+      label.setAttribute("font-size", "10.5"); label.setAttribute("fill", "var(--ink-muted)");
+      label.setAttribute("font-family", "IBM Plex Mono, monospace");
+      label.textContent = fmtDate(history[i].timestamp);
+      svg.appendChild(label);
+    });
+
+    // crosshair
+    var cross = document.createElementNS(svg.namespaceURI, "line");
+    cross.setAttribute("y1", padT); cross.setAttribute("y2", h - padB);
+    cross.setAttribute("stroke", "var(--line-strong)"); cross.setAttribute("stroke-width", "1");
+    cross.style.opacity = "0";
+    svg.appendChild(cross);
+    var crossDot = document.createElementNS(svg.namespaceURI, "circle");
+    crossDot.setAttribute("r", "5"); crossDot.setAttribute("fill", "var(--accent)");
+    crossDot.setAttribute("stroke", "var(--surface)"); crossDot.setAttribute("stroke-width", "2");
+    crossDot.style.opacity = "0";
+    svg.appendChild(crossDot);
+
+    var hit = document.createElementNS(svg.namespaceURI, "rect");
+    hit.setAttribute("x", padL); hit.setAttribute("y", padT);
+    hit.setAttribute("width", w - padL - padR); hit.setAttribute("height", h - padT - padB);
+    hit.setAttribute("fill", "transparent");
+    svg.appendChild(hit);
+
+    area.appendChild(svg);
+    var tip = el("div", "chart-tip");
+    tip.innerHTML = '<div class="v"></div><div class="d"></div>';
+    area.appendChild(tip);
+
+    function nearestIndex(clientX) {
+      var rect = svg.getBoundingClientRect();
+      var relX = ((clientX - rect.left) / rect.width) * w;
+      var best = 0, bestDist = Infinity;
+      pts.forEach(function (p, i) {
+        var dist = Math.abs(p[0] - relX);
+        if (dist < bestDist) { bestDist = dist; best = i; }
+      });
+      return best;
+    }
+
+    function showAt(i) {
+      var p = pts[i];
+      cross.setAttribute("x1", p[0]); cross.setAttribute("x2", p[0]);
+      cross.style.opacity = "1";
+      crossDot.setAttribute("cx", p[0]); crossDot.setAttribute("cy", p[1]);
+      crossDot.style.opacity = "1";
+      var rect = svg.getBoundingClientRect();
+      var pxRatio = rect.width / w;
+      tip.style.left = (p[0] * pxRatio) + "px";
+      tip.style.top = (p[1] * (rect.height / h)) + "px";
+      tip.style.opacity = "1";
+      tip.querySelector(".v").textContent = history[i].healthScore + " / 100";
+      tip.querySelector(".d").textContent = fmtDateFull(history[i].timestamp);
+    }
+    function hide() {
+      cross.style.opacity = "0"; crossDot.style.opacity = "0"; tip.style.opacity = "0";
+    }
+
+    hit.addEventListener("pointermove", function (e) { showAt(nearestIndex(e.clientX)); });
+    hit.addEventListener("pointerleave", hide);
+    hit.addEventListener("pointerdown", function (e) { showAt(nearestIndex(e.clientX)); });
+  }
+
+  function buildTable(history) {
+    var wrap = document.getElementById("tableWrap");
+    var chartArea = document.getElementById("chartArea");
+    wrap.innerHTML = "";
+    wrap.hidden = true;
+    chartArea.hidden = false;
+
+    var table = el("table", "data-table");
+    var thead = el("thead");
+    var htr = el("tr");
+    htr.appendChild(el("th", null, "תאריך"));
+    htr.appendChild(el("th", null, "ציון"));
+    thead.appendChild(htr);
+    table.appendChild(thead);
+    var tbody = el("tbody");
+    history.slice().reverse().forEach(function (run) {
+      var tr = el("tr");
+      tr.appendChild(el("td", null, fmtDateFull(run.timestamp)));
+      tr.appendChild(el("td", null, String(run.healthScore)));
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    wrap.appendChild(table);
+
+    var btn = document.getElementById("tableToggle");
+    btn.textContent = "הצג כטבלה";
+    btn.onclick = function () {
+      var showing = !wrap.hidden;
+      wrap.hidden = showing;
+      chartArea.hidden = !showing;
+      btn.textContent = showing ? "הצג כטבלה" : "הצג כגרף";
+    };
+  }
+
+  fetch("data/health-history.json")
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      DATA = data;
+      STATE.designerDiscId = data.disciplines[0].id;
+      setupRoleSwitcher();
+      render();
+    })
+    .catch(function (err) {
+      document.getElementById("heroSection").textContent = "שגיאה בטעינת נתונים: " + err.message;
+    });
+})();
+</script>
